@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eci-prometheus-exporter
+  labels:
+    app.kubernetes.io/name: eci-prometheus-exporter-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eci-exporter
+  template:
+    metadata:
+      labels:
+        app: eci-exporter
+    spec:
+      containers:
+        - name: exporter
+          image: docker.io/mitaka8/eci-prometheus-exporter:latest
+          command: 
+          args:
+            - "eci-prometheus-exporter"
+            - "-initiatives=045,043"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+

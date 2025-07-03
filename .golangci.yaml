@@ -1,0 +1,31 @@
+version: "2"
+linters:
+  default: all
+
+  disable:
+    - varnamelen
+    - exhaustruct
+  settings:
+    ireturn: 
+      allow:
+        # Design of an external library. can't do much about it.
+        - anon
+        - "error"
+    depguard:
+      rules:
+        tests:
+          files:
+            - '$test'
+          allow:
+            - $gostd
+            - go.uber.org/zap
+            - github.com/stretchr/testify/assert
+            - github.com/tvanriel/eci-prometheus-exporter
+        main:
+          files:
+            - "$all"
+            - "!$test"
+          allow:
+            - $gostd
+            - go.uber.org/zap
+            - github.com/prometheus/client_golang/prometheus

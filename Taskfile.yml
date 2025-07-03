@@ -1,0 +1,59 @@
+version: '3'
+
+vars:
+  CONTAINER_REF: "mitaka8/eci-prometheus-exporter:latest"
+  MANIFEST_NAME: "eci-prometheus-exporter"
+
+tasks:
+  manifest:
+    internal: true
+    run: 'once'
+    cmds:
+      - 'buildah manifest rm {{.MANIFEST_NAME}} || : ; buildah manifest create {{.MANIFEST_NAME}}'
+
+  container:
+    deps:
+      - container-amd64
+      - container-arm64
+
+    cmds:
+      - buildah manifest push --all {{.MANIFEST_NAME}} "docker://{{.CONTAINER_REF}}"
+
+  build-container:
+    internal: true
+    cmds:
+      - buildah bud --tag {{.CONTAINER_REF}} --arch {{.ARCH}} --manifest {{.MANIFEST_NAME}} -f Containerfile .
+
+  container-amd64:
+    internal: true
+    deps: [manifest]
+    cmds: 
+      - task: build-container
+        vars:
+          ARCH: amd64
+
+  container-arm64:
+    internal: true
+    deps: [manifest]
+    cmds:
+      - task: build-container
+        vars:
+          ARCH: arm64
+  bin:
+    cmds:
+      - go build -ldflags="-w -s" -o eci-prometheus-exporter .
+
+  test:
+    cmds:
+      - go test ./...
+
+  fmt:
+    cmds:
+      - gofumpt -w .
+
+  lint:
+    cmds:
+      - golangci-lint run --fix .
+
+
+
