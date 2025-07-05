@@ -8,3 +8,4 @@ threshold:
 exclude:
   paths:
     - main.go$ # testing main is ridiculous.
+    - threshold.go$ # don't really care so much.  Copypasted code from the ECI webportal.
