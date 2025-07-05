@@ -23,10 +23,13 @@ type ProgressResponse struct {
 	SOSReport        SOSReport `json:"sosReport"`
 }
 
+// SOSEntry is a single entry for a country in the [SOSReport].
 type SOSEntry struct {
 	CountryCode string `json:"countryCodeType"` // e.g. "NL"
 	Total       int    `json:"total"`
 }
+
+// SOSReport is the report containing the statistics with Statements of Support.
 type SOSReport struct {
 	TotalSignatures int        `json:"totalSignatures"`
 	UpdateDate      string     `json:"updateDate"` // e.g. "04/06/2025"
@@ -108,13 +111,45 @@ func (a *Application) MustRegisterWith(r prometheus.Registerer) {
 // ErrNon200 is returned when a non-200 response was given by the ECI API.
 var ErrNon200 = errors.New("Non-200 response")
 
-// FetchAndUpdateMetrics performs the request and puts the result in the counters.
+// FetchAndUpdateMetrics performs the request and puts the result in the metrics.
 func (a *Application) FetchAndUpdateMetrics(ctx context.Context, registrationNumber RegistrationNumber) error {
-	apiURL := fmt.Sprintf("%s/core/api/register/details/%s/%s", a.APIURL, registrationNumber.Year, registrationNumber.Number)
+	data, err := a.Fetch(ctx, registrationNumber)
+	if err != nil {
+		return err
+	}
+
+	logger := a.Logger.With(zap.String("initiative_id", registrationNumber.String()))
+
+	registrationDate, err := time.Parse("02/01/2006", data.RegistrationDate)
+	if err != nil {
+		logger.Error("failed to parse registration date.", zap.Error(err))
+
+		return fmt.Errorf("cannot parse registration date: %w", err)
+	}
+
+	th := GetThresholds(registrationDate)
+
+	for _, e := range data.SOSReport.Entries {
+		a.SignatureCount.WithLabelValues(
+			registrationNumber.String(), 
+			e.CountryCode,
+		).Set(float64(e.Total))
+		a.SignatureGoal.WithLabelValues(
+			registrationNumber.String(), 
+			e.CountryCode,
+		).Set(float64(th[MemberCountryCode(strings.ToLower(e.CountryCode))]))
+	}
+
+	return nil
+}
+
+// Fetch performs the API call to the ECI.
+func (a *Application) Fetch(ctx context.Context, registrationNumber RegistrationNumber) (*ProgressResponse, error) {
+	apiURL := a.eciAPIURL(registrationNumber)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
-		return fmt.Errorf("make request: %w", err)
+		return nil, fmt.Errorf("make request: %w", err)
 	}
 
 	logger := a.Logger.With(zap.String("initiative_id", registrationNumber.String()))
@@ -128,7 +163,7 @@ func (a *Application) FetchAndUpdateMetrics(ctx context.Context, registrationNum
 	if err != nil {
 		logger.Error("Error fetching ECI API", zap.Error(err))
 
-		return fmt.Errorf("err doing request: %w", err)
+		return nil, fmt.Errorf("doing request: %w", err)
 	}
 
 	defer resp.Body.Close() //nolint:errcheck // don't really care.
@@ -136,16 +171,16 @@ func (a *Application) FetchAndUpdateMetrics(ctx context.Context, registrationNum
 	if resp.StatusCode != http.StatusOK {
 		logger.Error("Non-200 response", zap.Int("status_code", resp.StatusCode))
 
-		return ErrNon200
+		return nil, ErrNon200
 	}
 
-	var data ProgressResponse
+	data := &ProgressResponse{}
 
-	err = json.NewDecoder(resp.Body).Decode(&data)
+	err = json.NewDecoder(resp.Body).Decode(data)
 	if err != nil {
 		logger.Error("Failed to decode JSON", zap.Error(err))
 
-		return fmt.Errorf("decode json: %w", err)
+		return nil, fmt.Errorf("decode json: %w", err)
 	}
 
 	logger.Info("Fetched ECI stats",
@@ -153,21 +188,7 @@ func (a *Application) FetchAndUpdateMetrics(ctx context.Context, registrationNum
 		zap.Duration("duration", duration),
 	)
 
-	registrationDate, err := time.Parse("02/01/2006", data.RegistrationDate)
-	if err != nil {
-		logger.Error("failed to parse registration date.", zap.Error(err))
-
-		return fmt.Errorf("cannot parse registration date: %w", err)
-	}
-
-	th := GetThresholds(registrationDate)
-
-	for _, e := range data.SOSReport.Entries {
-		a.SignatureCount.WithLabelValues(registrationNumber.String(), e.CountryCode).Set(float64(e.Total))
-		a.SignatureGoal.WithLabelValues(registrationNumber.String(), e.CountryCode).Set(float64(th[MemberCountryCode(strings.ToLower(e.CountryCode))]))
-	}
-
-	return nil
+	return data, nil
 }
 
 // Serve starts the HTTP server.
@@ -204,6 +225,15 @@ func (a *Application) StartPolling(registrationNumber RegistrationNumber, ticker
 
 		cancel()
 	}
+}
+
+func (a *Application) eciAPIURL(registrationNumber RegistrationNumber) string {
+return fmt.Sprintf(
+		"%s/core/api/register/details/%s/%s",
+		a.APIURL,
+		registrationNumber.Year,
+		registrationNumber.Number,
+	)
 }
 
 const (

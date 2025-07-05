@@ -35,9 +35,10 @@ func ServerReportsCalls(n *int) Testserver {
 	}
 }
 
+//nolint:lll // testdata
 const defaultResponse = `{"sosReport":{"totalSignatures":1149248,"updateDate":"04/06/2025","entry":[{"countryCodeType":"SK","total":15885},{"countryCodeType":"EE","total":8272},{"countryCodeType":"BE","total":26068},{"countryCodeType":"BG","total":12266},{"countryCodeType":"IT","total":64528},{"countryCodeType":"IE","total":31377},{"countryCodeType":"FR","total":120251},{"countryCodeType":"ES","total":100283},{"countryCodeType":"HU","total":22569},{"countryCodeType":"SE","total":60153},{"countryCodeType":"DE","total":243448},{"countryCodeType":"SI","total":6072},{"countryCodeType":"LU","total":2387},{"countryCodeType":"MT","total":1753},{"countryCodeType":"LV","total":7004},{"countryCodeType":"DK","total":31965},{"countryCodeType":"CY","total":1898},{"countryCodeType":"AT","total":18513},{"countryCodeType":"GR","total":17513},{"countryCodeType":"NL","total":75811},{"countryCodeType":"LT","total":12783},{"countryCodeType":"CZ","total":19789},{"countryCodeType":"HR","total":12554},{"countryCodeType":"RO","total":32197},{"countryCodeType":"PT","total":27391},{"countryCodeType":"PL","total":126130},{"countryCodeType":"FI","total":50388}]},"registrationDate":"19/06/2024"}`
 
-const unparseableDate = `{"sosReport":{"totalSignatures":0,"entry":[]},"registrationDate":"this is not a valid date"}`
+const unparsableDate = `{"sosReport":{"totalSignatures":0,"entry":[]},"registrationDate":"this is not a valid date"}`
 
 func ServerWantsCallForInitiativeID(rn *eci.RegistrationNumber) Testserver {
 	return func(t *testing.T) *httptest.Server {
@@ -59,15 +60,14 @@ func NotJSON(t *testing.T) *httptest.Server {
 		_, _ = w.Write([]byte(`This is not JSON`))
 	}))
 }
+
 func InvalidDate(t *testing.T) *httptest.Server {
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(unparseableDate))
+		_, _ = w.Write([]byte(unparsableDate))
 	}))
 }
-
-
 
 func BrokenAF(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -89,6 +89,7 @@ func errContains(text string) assert.ErrorAssertionFunc {
 	}
 }
 
+//nolint:funlen // long test.
 func TestApplication_FetchAndUpdateMetrics(t *testing.T) {
 	t.Parallel()
 
@@ -123,7 +124,7 @@ func TestApplication_FetchAndUpdateMetrics(t *testing.T) {
 			server:      NotJSON,
 			wantErr:     errContains("decode json"),
 		},
-		"unparseable registration date": {
+		"unparsable registration date": {
 			initiatives: []eci.RegistrationNumber{*MustParseRegistrationNumber("ECI(2024)000007")},
 			server:      InvalidDate,
 			wantErr:     errContains("parse registration date"),
@@ -196,7 +197,13 @@ func TestApplication_StartPolling(t *testing.T) {
 //nolint:paralleltest // do not run me parallel.
 func TestApplication_Serve(t *testing.T) {
 	server := ServerWantsCallForInitiativeID(MustParseRegistrationNumber("ECI(2024)000007"))(t)
-	app := eci.NewApplication(zaptest.NewLogger(t), server.URL+"/", []eci.RegistrationNumber{*MustParseRegistrationNumber("ECI(2024)000007")}, ":12415", http.DefaultClient)
+	app := eci.NewApplication(
+		zaptest.NewLogger(t),
+		server.URL,
+		[]eci.RegistrationNumber{*MustParseRegistrationNumber("ECI(2024)000007")},
+		":12415",
+		http.DefaultClient,
+	)
 
 	go func() {
 		_ = app.Serve()
@@ -215,7 +222,13 @@ func TestApplication_Serve(t *testing.T) {
 //nolint:paralleltest // do not run me parallel.
 func TestApplication_ServeInvalidListenAddre(t *testing.T) {
 	server := ServerWantsCallForInitiativeID(MustParseRegistrationNumber("ECI(2024)000007"))(t)
-	app := eci.NewApplication(zaptest.NewLogger(t), server.URL+"/", []eci.RegistrationNumber{*MustParseRegistrationNumber("ECI(2024)000007")}, "i am not a valid listener.", http.DefaultClient)
+	app := eci.NewApplication(
+		zaptest.NewLogger(t),
+		server.URL,
+		[]eci.RegistrationNumber{*MustParseRegistrationNumber("ECI(2024)000007")},
+		"i am not a valid addr.",
+		http.DefaultClient,
+	)
 
 	require.Error(t, app.Serve())
 }

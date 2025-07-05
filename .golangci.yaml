@@ -28,7 +28,9 @@ linters:
             - $gostd
             - go.uber.org/zap
             - github.com/stretchr/testify/assert
+            - github.com/stretchr/testify/require
             - github.com/tvanriel/eci-prometheus-exporter
+            - github.com/prometheus/client_golang/prometheus
         main:
           files:
             - "$all"

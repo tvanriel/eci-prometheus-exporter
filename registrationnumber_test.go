@@ -60,5 +60,6 @@ func MustParseRegistrationNumber(str string) *eci.RegistrationNumber {
 	if err != nil {
 		panic(fmt.Errorf("must parse registration number failed: %w", err))
 	}
+
 	return rn
 }
