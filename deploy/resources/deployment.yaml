@@ -20,7 +20,8 @@ spec:
           command: 
           args:
             - "eci-prometheus-exporter"
-            - "-initiatives=045,043"
+            - "-initiatives=ECI(2024)000007"
+            - "-interval=60s"
           ports:
             - name: http
               containerPort: 8080

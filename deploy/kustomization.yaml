@@ -5,3 +5,10 @@ resources:
 - resources/podmonitor.yaml
 - resources/ns.yaml
 namespace: eci-prometheus-exporter
+configMapGenerator:
+- files:
+  - dashboard.json=./configs/dashboard.json
+  name: grafana-dashboard
+  options:
+    labels:
+      grafana_dashboard: "1"

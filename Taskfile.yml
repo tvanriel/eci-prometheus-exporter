@@ -15,7 +15,6 @@ tasks:
     deps:
       - container-amd64
       - container-arm64
-
     cmds:
       - buildah manifest push --all {{.MANIFEST_NAME}} "docker://{{.CONTAINER_REF}}"
 
@@ -39,6 +38,7 @@ tasks:
       - task: build-container
         vars:
           ARCH: arm64
+
   bin:
     cmds:
       - go build -ldflags="-w -s" -o eci-prometheus-exporter .

@@ -1,0 +1,10 @@
+profile: cover.out
+
+threshold:
+  file: 70
+  package: 80
+  total: 0
+
+exclude:
+  paths:
+    - main.go$ # testing main is ridiculous.

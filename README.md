@@ -1,11 +1,16 @@
 # European Citizens Initiative Prometheus Exporter
 
+[![Docker Pulls](https://badgen.net/docker/pulls/mitaka8/eci-prometheus-exporter?icon=docker&label=pulls)](https://hub.docker.com/r/mitaka8/eci-prometheus-exporter/)
+[![Docker Stars](https://badgen.net/docker/stars/mitaka8/eci-prometheus-exporter?icon=docker&label=stars)](https://hub.docker.com/r/mitaka8/eci-prometheus-exporter/)
+[![Docker Image Size](https://badgen.net/docker/size/mitaka8/eci-prometheus-exporter?icon=docker&label=image%20size)](https://hub.docker.com/r/mitaka8/eci-prometheus-exporter/)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/tvanriel/eci-prometheus-exporter)
+
 A tiny, Go service that scrapes the **European Citizens Initiative** statistics API and exposes them.
 
 |  Metric              |  Type    |  Description                                                  |
 | -------------------- | -------- | ------------------------------------------------------------- |
-| `eci_signatures`     |  `gauge` | Current number of collected signatures                        |
-| `eci_signature_goal` |  `gauge` | Official signature goal (1 000 000 for most initiatives)      |
+| `eci_signatures`     |  `gauge` |  Number of signatures collected by the European Citizens Initiative Per member state.                       |
+| `eci_signature_threshold` |  `gauge` |  Threshold number of signatures per member state.     |
 
 ---
 
@@ -16,7 +21,7 @@ A tiny, Go service that scrapes the **European Citizens Initiative** statistics 
 ```bash
 go install github.com/tvanriel/eci-prometheus-exporter@latest
 eci-prometheus-exporter \
-  -initiative=045 \
+  -initiatives=ECI(2024)000007 \
   -listen-address=:8080 \
   -interval=5m
 ```
@@ -27,7 +32,7 @@ eci-prometheus-exporter \
 docker run -d --name eci-exporter \
   -p 8080:8080 \
   docker.io/mitaka8/eci-prometheus-exporter:latest \
-  -initiatives=045
+  -initiatives=ECI(2024)000007
 ```
 
 ### Kubernetes
@@ -41,7 +46,7 @@ kubectl apply -k ./deploy
 
 | Flag              | Default       | Description                    |
 | ----------------- | ------------- | ------------------------------ |
-| `-initiatives`     | **required** | Initiative IDs, e.g. `045,046` |
+| `-initiatives`     | **required** | Initiative IDs, e.g. `ECI(2024)000007,ECI(2024)000008` |
 | `-listen-address` | `:8080`       | HTTP bind address              |
 | `-interval`       | `5m`          | Polling interval               |
 
@@ -50,7 +55,7 @@ kubectl apply -k ./deploy
 ## Development
 
 ```bash
-go run main.go -initiatives=045
+go run . -initiatives=ECI(2024)000007
 ```
 ---
 ## Copyright
